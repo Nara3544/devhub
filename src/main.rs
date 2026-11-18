@@ -6,6 +6,7 @@
 //! - `devhub serve`  … サーバーだけ起動（スタートアップ用）
 
 mod api;
+mod games;
 mod hid;
 mod keycodes;
 mod lamzu;
@@ -58,6 +59,7 @@ fn main() {
                     open_window();
                 });
             }
+            games::start_watcher();
             api::run(server);
         }
         Err(_) => {

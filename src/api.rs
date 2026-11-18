@@ -1,6 +1,6 @@
 //! HTTP サーバー（UI 配信 + JSON API）。仕様は docs/API.md。
 
-use crate::{keycodes, lamzu, zenaim};
+use crate::{games, keycodes, lamzu, zenaim};
 use crate::hid::HidApi;
 use include_dir::{include_dir, Dir};
 use serde::Deserialize;
@@ -73,7 +73,10 @@ fn route(m: &Method, path: &str, q: &[(String, String)], body: &str) -> R<Value>
         (Method::Get, "/api/keyboard") => with_hid(|api| kb_read(api, profile)),
         (Method::Patch, "/api/keyboard") | (Method::Post, "/api/keyboard") => {
             let p: KbPatch = parse(body)?;
-            with_hid(|api| kb_patch(api, &p))
+            let (v, profile) = with_hid(|api| kb_patch(api, &p))?;
+            // ベースを変えたら、それを元にしたゲーム用プロファイルも追従（HID ロック外で）
+            if p.keys.is_some() || p.all.is_some() || p.socd.is_some() { games::resync_from(profile)?; }
+            Ok(v)
         }
         (Method::Get, "/api/keyboard/travel") => with_hid(|api| {
             let kb = zenaim::Keyboard::open(api)?;
@@ -101,6 +104,17 @@ fn route(m: &Method, path: &str, q: &[(String, String)], body: &str) -> R<Value>
             let id: u8 = qp("id").and_then(|s| s.parse().ok()).ok_or("id が必要です")?;
             Ok(json!(ms.button_raw(profile.unwrap_or(0), id)?))
         }),
+        (Method::Get, "/api/games") => Ok(json!({"rules": games::load(), "state": games::state()})),
+        (Method::Put, "/api/games") => {
+            let rules: Vec<games::GameRule> = parse(body)?;
+            games::save(&rules)?;
+            for r in rules.iter().filter(|r| r.enabled) { games::sync(r)?; }
+            Ok(json!({"rules": games::load(), "state": games::state()}))
+        }
+        (Method::Post, "/api/games/sync") => {
+            for r in games::load().iter().filter(|r| r.enabled) { games::sync(r)?; }
+            Ok(json!(null))
+        }
         (Method::Get, "/api/presets") => list_presets(),
         (Method::Post, "/api/presets") => {
             #[derive(Deserialize)]
@@ -130,7 +144,7 @@ fn route(m: &Method, path: &str, q: &[(String, String)], body: &str) -> R<Value>
     }
 }
 
-fn with_hid<T>(f: impl FnOnce(&HidApi) -> R<T>) -> R<T> {
+pub fn with_hid<T>(f: impl FnOnce(&HidApi) -> R<T>) -> R<T> {
     let mut g = HID.lock().unwrap_or_else(|e| e.into_inner());
     if g.is_none() {
         *g = Some(HidApi::new().map_err(|e| format!("HID 初期化失敗: {e}"))?);
@@ -248,7 +262,7 @@ fn merge_key(k: &mut zenaim::KeySetting, p: &KeyPatch) -> R<()> {
     Ok(())
 }
 
-fn kb_patch(api: &HidApi, p: &KbPatch) -> R<Value> {
+fn kb_patch(api: &HidApi, p: &KbPatch) -> R<(Value, u8)> {
     let kb = zenaim::Keyboard::open(api)?;
     let profile = match p.profile { Some(x) => x, None => kb.active_profile()? };
     let mut st = kb.read_profile(profile)?;
@@ -288,7 +302,7 @@ fn kb_patch(api: &HidApi, p: &KbPatch) -> R<Value> {
     };
     kb.write_profile(profile, &changed, socd.as_deref(), p.hold_time)?;
     if let Some(ap) = p.active_profile { kb.set_active_profile(ap)?; }
-    kb_read(api, Some(profile))
+    Ok((kb_read(api, Some(profile))?, profile))
 }
 
 // ---------- プリセット ----------

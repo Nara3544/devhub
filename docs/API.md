@@ -96,6 +96,34 @@
 | `angleTune` | -30〜30 |
 | `sleepSec` | 10〜1800 |
 
+## ゲームモード
+
+ゲームが前面にある間だけ、キーボード（とマウス）のプロファイルを自動で切り替える。
+ゲーム用プロファイルは `baseProfile` のコピーで、`disableKeys` のキーだけ「なし」になる。
+ベースを `PATCH /api/keyboard` で変えると自動で作り直される。切り替えは保存しない（再起動で元に戻る）。
+
+| メソッド | パス | 内容 |
+|---|---|---|
+| GET | `/api/games` | ルール一覧と現在の状態（`state.active` = 有効中のゲーム） |
+| PUT | `/api/games` | ルールを丸ごと保存し、ゲーム用プロファイルを作り直す |
+| POST | `/api/games/sync` | ゲーム用プロファイルを作り直す |
+
+```json
+[
+  {
+    "name": "Apex Legends",
+    "enabled": true,
+    "exe": ["r5apex.exe", "r5apex_dx12.exe"],
+    "keyboardProfile": 4,
+    "baseProfile": 0,
+    "disableKeys": ["Win"],
+    "mouseProfile": null
+  }
+]
+```
+
+保存先: `%APPDATA%\devhub\games.json`
+
 ## プリセット
 
 | メソッド | パス | 内容 |

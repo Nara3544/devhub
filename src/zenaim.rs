@@ -281,6 +281,25 @@ impl Keyboard {
         self.simple(cmd::PROFILE_SELECT_SAVE)
     }
 
+    /// 保存せずに切り替える（ゲームモード用。EEPROM を消耗させない・再起動で元に戻る）
+    pub fn switch_profile_temp(&self, p: u8) -> R<()> {
+        check_profile(p)?;
+        self.set_buffer(cmd::PROFILE_SELECT_SET, 0, &[p])?;
+        self.simple(cmd::PROFILE_SELECT_APPLY)
+    }
+
+    /// src の設定を dst に丸ごとコピーし、disable に含まれるキーコードを「なし」にする
+    pub fn copy_profile(&self, src: u8, dst: u8, disable: &[u16]) -> R<()> {
+        let st = self.read_profile(src)?;
+        let keys: Vec<KeySetting> = st.keys.into_iter().map(|mut k| {
+            for l in [0usize, 2] {
+                if disable.contains(&k.keycodes[l]) { k.keycodes[l] = 0; }
+            }
+            k
+        }).collect();
+        self.write_profile(dst, &keys, Some(&st.socd), None)
+    }
+
     pub fn read_profile(&self, p: u8) -> R<ProfileState> {
         check_profile(p)?;
         let n = self.model.count();

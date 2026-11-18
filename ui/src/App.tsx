@@ -13,6 +13,7 @@ import { Banner } from '@astryxdesign/core/Banner'
 import { api, type Status } from './api'
 import { KeyboardPanel } from './Keyboard'
 import { MousePanel } from './Mouse'
+import { GamesPanel } from './Games'
 
 type Toast = { msg: string; err: boolean; id: number }
 
@@ -45,12 +46,14 @@ export function App() {
       <TabList value={tab} onChange={setTab} hasDivider>
         <Tab value="keyboard" label="キーボード" />
         <Tab value="mouse" label="マウス" />
+        <Tab value="games" label="ゲーム" />
         <Tab value="presets" label="プリセット" />
         <Tab value="settings" label="設定" />
       </TabList>
       <div style={{ marginTop: 16 }}>
         {tab === 'keyboard' && <KeyboardPanel onToast={onToast} />}
         {tab === 'mouse' && <MousePanel onToast={onToast} />}
+        {tab === 'games' && <GamesPanel onToast={onToast} />}
         {tab === 'presets' && <Presets onToast={onToast} />}
         {tab === 'settings' && <Settings version={status?.version} onToast={onToast} />}
       </div>
