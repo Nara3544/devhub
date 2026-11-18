@@ -1,0 +1,19 @@
+[package]
+name = "devhub"
+version = "0.1.0"
+edition = "2021"
+description = "ZENAIM キーボードと LAMZU Maya X をまとめて設定する軽量ハブ"
+license = "MIT"
+
+[dependencies]
+tiny_http = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+include_dir = "0.7"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
