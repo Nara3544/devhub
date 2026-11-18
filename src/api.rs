@@ -82,8 +82,11 @@ fn route(m: &Method, path: &str, q: &[(String, String)], body: &str) -> R<Value>
             let kb = zenaim::Keyboard::open(api)?;
             let st = kb.read_profile(kb.active_profile()?)?;
             let t = kb.travel()?;
-            Ok(Value::Array(t.into_iter().map(|(i, d, on)| {
-                let label = st.keys.iter().find(|k| k.index == i).map(|k| keycodes::label(k.keycodes[0])).unwrap_or_default();
+            // ファームのスイッチ状態ビットは静止時も立つため使わず、ON 位置との比較で判定する
+            Ok(Value::Array(t.into_iter().map(|(i, d, _)| {
+                let k = st.keys.iter().find(|k| k.index == i);
+                let label = k.map(|k| keycodes::label(k.keycodes[0])).unwrap_or_default();
+                let on = k.map(|k| d >= k.point_on as i16).unwrap_or(false);
                 json!({"index": i, "label": label, "depth": d, "on": on})
             }).collect()))
         }),
