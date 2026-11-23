@@ -23,6 +23,9 @@ pub struct GameRule {
     pub base_profile: u8,
     /// 無効化するキー（"Win" "KC_LGUI" など）
     pub disable_keys: Vec<String>,
+    /// Fn と同時押しなら無効化したキーも効く
+    #[serde(default = "yes")]
+    pub allow_with_fn: bool,
     /// ゲーム中に使うマウスのプロファイル（1〜3、省略で切り替えない）
     #[serde(default)]
     pub mouse_profile: Option<u8>,
@@ -49,6 +52,8 @@ static INNER: Mutex<Inner> = Mutex::new(Inner {
     restore_kb: None,
     restore_mouse: None,
 });
+
+fn yes() -> bool { true }
 
 fn path() -> PathBuf {
     let base = std::env::var("APPDATA").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("."));
@@ -92,7 +97,7 @@ pub fn sync(r: &GameRule) -> Result<(), String> {
     let codes = disable_codes(r)?;
     with_hid(|api| {
         let kb = zenaim::Keyboard::open(api)?;
-        kb.copy_profile(r.base_profile, r.keyboard_profile, &codes)
+        kb.copy_profile(r.base_profile, r.keyboard_profile, &codes, r.allow_with_fn)
     })
 }
 

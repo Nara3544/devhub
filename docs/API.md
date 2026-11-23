@@ -100,6 +100,7 @@
 
 ゲームが前面にある間だけ、キーボード（とマウス）のプロファイルを自動で切り替える。
 ゲーム用プロファイルは `baseProfile` のコピーで、`disableKeys` のキーだけ「なし」になる。
+`allowWithFn`（既定 true）なら Fn と同時押しのときだけ元のキーとして効く。
 ベースを `PATCH /api/keyboard` で変えると自動で作り直される。切り替えは保存しない（再起動で元に戻る）。
 
 | メソッド | パス | 内容 |
@@ -117,6 +118,7 @@
     "keyboardProfile": 4,
     "baseProfile": 0,
     "disableKeys": ["Win"],
+    "allowWithFn": true,
     "mouseProfile": null
   }
 ]

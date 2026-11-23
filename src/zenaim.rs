@@ -288,12 +288,17 @@ impl Keyboard {
         self.simple(cmd::PROFILE_SELECT_APPLY)
     }
 
-    /// src の設定を dst に丸ごとコピーし、disable に含まれるキーコードを「なし」にする
-    pub fn copy_profile(&self, src: u8, dst: u8, disable: &[u16]) -> R<()> {
+    /// src の設定を dst に丸ごとコピーし、disable に含まれるキーコードを「なし」にする。
+    /// allow_fn = true なら Fn レイヤーには元のキーを置き、Fn と同時押しのときだけ効くようにする。
+    pub fn copy_profile(&self, src: u8, dst: u8, disable: &[u16], allow_fn: bool) -> R<()> {
         let st = self.read_profile(src)?;
         let keys: Vec<KeySetting> = st.keys.into_iter().map(|mut k| {
-            for l in [0usize, 2] {
-                if disable.contains(&k.keycodes[l]) { k.keycodes[l] = 0; }
+            let orig = k.keycodes[0];
+            if disable.contains(&orig) {
+                k.keycodes[0] = 0;
+                k.keycodes[2] = if allow_fn { orig } else { 0 };
+            } else if disable.contains(&k.keycodes[2]) && !allow_fn {
+                k.keycodes[2] = 0;
             }
             k
         }).collect();
