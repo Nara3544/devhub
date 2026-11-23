@@ -290,10 +290,18 @@ impl Keyboard {
 
     /// src の設定を dst に丸ごとコピーし、disable に含まれるキーコードを「なし」にする。
     /// allow_fn = true なら Fn レイヤーには元のキーを置き、Fn と同時押しのときだけ効くようにする。
-    pub fn copy_profile(&self, src: u8, dst: u8, disable: &[u16], allow_fn: bool) -> R<()> {
+    /// fn_keys に含まれるキーは Fn キー（元の Fn と同じレイヤー切替）にする。
+    pub fn copy_profile(&self, src: u8, dst: u8, disable: &[u16], allow_fn: bool, fn_keys: &[u16]) -> R<()> {
         let st = self.read_profile(src)?;
+        // 元の Fn キー（MO(n) = 0x5220|n）を探す。見つからなければ MO(2)
+        let mo = st.keys.iter().map(|k| k.keycodes[0]).find(|c| (0x5220..0x5240).contains(c)).unwrap_or(0x5222);
         let keys: Vec<KeySetting> = st.keys.into_iter().map(|mut k| {
             let orig = k.keycodes[0];
+            if fn_keys.contains(&orig) {
+                k.keycodes[0] = mo;
+                k.keycodes[2] = mo;
+                return k;
+            }
             if disable.contains(&orig) {
                 k.keycodes[0] = 0;
                 k.keycodes[2] = if allow_fn { orig } else { 0 };

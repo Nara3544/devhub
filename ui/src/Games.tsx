@@ -14,7 +14,7 @@ import { api, PROFILES } from './api'
 
 type Rule = {
   name: string; enabled: boolean; exe: string[]; keyboardProfile: number; baseProfile: number
-  disableKeys: string[]; allowWithFn: boolean; mouseProfile: number | null
+  disableKeys: string[]; allowWithFn: boolean; fnKeys?: string[]; mouseProfile: number | null
 }
 type Mode = { active: string | null; foreground: string; lastError: string | null }
 
@@ -27,7 +27,7 @@ const DISABLE_CHOICES = [
 
 const PRESET: Rule = {
   name: 'Apex Legends', enabled: true, exe: ['r5apex.exe', 'r5apex_dx12.exe'],
-  keyboardProfile: 4, baseProfile: 0, disableKeys: ['Win'], allowWithFn: true, mouseProfile: null,
+  keyboardProfile: 4, baseProfile: 0, disableKeys: ['Win'], allowWithFn: true, fnKeys: ['RCtrl'], mouseProfile: null,
 }
 
 export function GamesPanel({ onToast }: { onToast: (m: string, e?: boolean) => void }) {
@@ -105,6 +105,9 @@ export function GamesPanel({ onToast }: { onToast: (m: string, e?: boolean) => v
               </HStack>
               <Switch label="Fn と同時押しなら有効" description="例: Fn + Windows キーで Windows キーが効く" value={r.allowWithFn !== false}
                 onChange={v => edit(i, { allowWithFn: v })} />
+              <Selector label="Fn として使うキー（ゲーム中だけ）" width={260}
+                options={[{ value: '', label: 'なし（本来の Fn のみ）' }, ...['RCtrl', '無変換', '変換', 'かな', 'Menu'].map(k => ({ value: k, label: k }))]}
+                value={r.fnKeys?.[0] ?? ''} onChange={v => edit(i, { fnKeys: v ? [v] : [] })} />
             </VStack>
             <HStack gap={2}>
               <Button label="削除" size="sm" variant="ghost" onClick={() => { setRules(rules.filter((_, j) => j !== i)); setDirty(true) }} />

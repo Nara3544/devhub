@@ -26,6 +26,9 @@ pub struct GameRule {
     /// Fn と同時押しなら無効化したキーも効く
     #[serde(default = "yes")]
     pub allow_with_fn: bool,
+    /// ゲーム中だけ Fn キーとして使うキー（例: ["RCtrl"]）
+    #[serde(default)]
+    pub fn_keys: Vec<String>,
     /// ゲーム中に使うマウスのプロファイル（1〜3、省略で切り替えない）
     #[serde(default)]
     pub mouse_profile: Option<u8>,
@@ -97,7 +100,11 @@ pub fn sync(r: &GameRule) -> Result<(), String> {
     let codes = disable_codes(r)?;
     with_hid(|api| {
         let kb = zenaim::Keyboard::open(api)?;
-        kb.copy_profile(r.base_profile, r.keyboard_profile, &codes, r.allow_with_fn)
+        let fn_codes = r.fn_keys.iter()
+            .map(|k| keycodes::parse(k).ok_or(format!("キー名 \"{k}\" が分かりません")))
+            .collect::<Result<Vec<u16>, String>>()?;
+        if fn_codes.iter().any(|c| codes.contains(c)) { return Err("無効にするキーを Fn にはできません".into()); }
+        kb.copy_profile(r.base_profile, r.keyboard_profile, &codes, r.allow_with_fn, &fn_codes)
     })
 }
 
