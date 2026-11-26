@@ -1,6 +1,6 @@
 [package]
 name = "devhub"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "ZENAIM キーボードと LAMZU Maya X をまとめて設定する軽量ハブ"
 license = "MIT"
