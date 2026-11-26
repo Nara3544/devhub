@@ -120,8 +120,28 @@ pub fn state() -> ModeState {
     INNER.lock().unwrap_or_else(|e| e.into_inner()).state.clone()
 }
 
+/// ゲーム用プロファイルのまま取り残されていたら、そのベースに戻す（前回の終了時にゲーム中だった場合など）
+fn recover_stuck(rules: &[GameRule], fg: &str) {
+    if rules.iter().any(|r| r.enabled && r.exe.iter().any(|e| e.eq_ignore_ascii_case(fg))) { return; }
+    let _ = with_hid(|api| {
+        let kb = zenaim::Keyboard::open(api)?;
+        let cur = kb.active_profile()?;
+        if let Some(r) = rules.iter().find(|r| r.keyboard_profile == cur) {
+            kb.switch_profile_temp(r.base_profile)?;
+        }
+        Ok(())
+    });
+}
+
 pub fn start_watcher() {
-    std::thread::spawn(|| loop {
+    std::thread::spawn(|| {
+        recover_stuck(&load(), &foreground_exe().unwrap_or_default());
+        watch_loop()
+    });
+}
+
+fn watch_loop() -> ! {
+    loop {
         let rules = load();
         if rules.iter().any(|r| r.enabled) || INNER.lock().map(|g| g.state.active.is_some()).unwrap_or(false) {
             let fg = foreground_exe().unwrap_or_default();
@@ -130,7 +150,7 @@ pub fn start_watcher() {
         } else {
             std::thread::sleep(Duration::from_millis(3000));
         }
-    });
+    }
 }
 
 fn tick(rules: &[GameRule], fg: &str) {
@@ -143,7 +163,12 @@ fn tick(rules: &[GameRule], fg: &str) {
             // ゲーム開始（または別ゲームへ）
             let res = with_hid(|api| {
                 if let Ok(kb) = zenaim::Keyboard::open(api) {
-                    if g.restore_kb.is_none() { g.restore_kb = Some(kb.active_profile()?); }
+                    if g.restore_kb.is_none() {
+                        // すでにゲーム用プロファイルなら、戻す先はそのベース
+                        let cur = kb.active_profile()?;
+                        let back = rules.iter().find(|x| x.keyboard_profile == cur).map(|x| x.base_profile).unwrap_or(cur);
+                        g.restore_kb = Some(back);
+                    }
                     kb.switch_profile_temp(r.keyboard_profile)?;
                 }
                 if let Some(mp) = r.mouse_profile {
